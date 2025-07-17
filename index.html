@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>Archive | Fan Bubble</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="style.css" />
+<script defer src="app.js"></script>
+</head>
+<body class="app-bg">
+<div id="app" class="app-frame">
+  <header class="app-header app-header--center">
+    <h1 class="app-title">XdinaryHeroes bubble</h1>
+  </header>
+  <main id="archiveList" class="archive-list"></main>
+  <nav class="app-tabbar">
+    <button id="membersBtn" class="tab-btn tab-btn--active">Members</button>
+    <button id="moreBtn" class="tab-btn">More</button>
+  </nav>
+
+  <!-- More 버튼 누르면 나오는 서브메뉴 -->
+  <div id="moreSubmenu" class="more-submenu" style="display:none;">
+    <button id="updateBtn">Update</button>
+    <button id="managerBtn">Manager</button>
+  </div>
+
+  <!-- Update 문의 폼 모달 -->
+  <div id="updateModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closeModal('updateModal')">×</button>
+      <h3>문의사항 보내기</h3>
+      <label for="updateMemberSelect">멤버 선택</label>
+      <select id="updateMemberSelect"></select>
+
+      <label for="updateDateInput">날짜 선택</label>
+      <input type="date" id="updateDateInput" />
+
+      <label for="updateContentInput">문의 내용</label>
+      <textarea id="updateContentInput" placeholder="문의 내용을 입력하세요."></textarea>
+
+      <div class="modal-actions">
+        <button class="secondary-btn" onclick="closeModal('updateModal')">취소</button>
+        <button class="primary-btn" id="sendUpdateBtn">보내기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 관리자 비밀번호 입력 모달 -->
+  <div id="managerPwModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closeModal('managerPwModal')">×</button>
+      <h3>관리자 비밀번호 입력</h3>
+      <input type="password" id="managerPwInput" placeholder="비밀번호를 입력하세요" />
+
+      <div class="modal-actions">
+        <button class="secondary-btn" onclick="closeModal('managerPwModal')">취소</button>
+        <button class="primary-btn" id="managerPwSubmitBtn">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 관리자 메뉴 모달 -->
+  <div id="managerMenuModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closeModal('managerMenuModal')">×</button>
+      <h3>관리자 메뉴</h3>
+      <div style="display:flex; justify-content:center; gap:16px;">
+        <button id="newsBtn" class="primary-btn">News</button>
+        <button id="uploadBtn" class="primary-btn">Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- News 목록 모달 -->
+  <div id="newsModal" class="modal hidden">
+    <div class="modal-card" style="max-height:70vh; overflow-y:auto;">
+      <button class="modal-close-btn" onclick="closeModal('newsModal')">×</button>
+      <h3>문의사항 목록</h3>
+      <div id="newsList"></div>
+    </div>
+  </div>
+
+  <!-- Upload 모달 -->
+  <div id="uploadModal" class="modal hidden">
+    <div class="modal-card" style="max-height:80vh; overflow-y:auto;">
+      <button class="modal-close-btn" onclick="closeModal('uploadModal')">×</button>
+      <h3>채팅 데이터 추가</h3>
+
+      <label for="uploadMemberSelect">멤버 선택</label>
+      <select id="uploadMemberSelect"></select>
+
+      <label for="uploadDateInput">날짜 선택</label>
+      <input type="date" id="uploadDateInput" />
+
+      <label for="uploadTimeSelect">시간 선택</label>
+      <select id="uploadTimeSelect">
+        <!-- 오전/오후 시간 옵션은 JS에서 채움 -->
+      </select>
+
+      <label for="uploadTextInput">메시지 입력</label>
+      <textarea id="uploadTextInput" placeholder="메시지를 입력하세요."></textarea>
+
+      <label for="uploadFileInput">이미지 업로드 (선택)</label>
+      <input type="file" id="uploadFileInput" accept="image/*" />
+
+      <div class="modal-actions">
+        <button class="secondary-btn" onclick="closeModal('uploadModal')">취소</button>
+        <button class="primary-btn" id="uploadSaveBtn">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 알림 팝업 -->
+  <div id="alertModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closeModal('alertModal')">×</button>
+      <h3 id="alertTitle"></h3>
+      <p id="alertMessage"></p>
+      <div class="modal-actions">
+        <button class="primary-btn" onclick="closeModal('alertModal')">확인</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
