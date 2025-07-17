@@ -1,127 +1,325 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="utf-8" />
-<title>Archive | Fan Bubble</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="stylesheet" href="style.css" />
-<script defer src="app.js"></script>
-</head>
-<body class="app-bg">
-<div id="app" class="app-frame">
-  <header class="app-header app-header--center">
-    <h1 class="app-title">XdinaryHeroes bubble</h1>
-  </header>
-  <main id="archiveList" class="archive-list"></main>
-  <nav class="app-tabbar">
-    <button id="membersBtn" class="tab-btn tab-btn--active">Members</button>
-    <button id="moreBtn" class="tab-btn">More</button>
-  </nav>
+/* Fan Bubble App JS
+ * 기존 기능 복원 + More 메뉴, Update 문의, 관리자 메뉴(News/Upload), 실시간 채팅 반영
+ */
 
-  <!-- More 버튼 누르면 나오는 서브메뉴 -->
-  <div id="moreSubmenu" class="more-submenu" style="display:none;">
-    <button id="updateBtn">Update</button>
-    <button id="managerBtn">Manager</button>
-  </div>
+// --- 멤버 목록 (기본) ---
+const MEMBER_LIST = [
+  {id:"Gunil", display:"건일"},
+  {id:"Jeongsu", display:"정수"},
+  {id:"Gaon", display:"가온"},
+  {id:"Ode", display:"오드"},
+  {id:"Junhan", display:"준한"},
+  {id:"Jooyeon", display:"주연"},
+];
 
-  <!-- Update 문의 폼 모달 -->
-  <div id="updateModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close-btn" onclick="closeModal('updateModal')">×</button>
-      <h3>문의사항 보내기</h3>
-      <label for="updateMemberSelect">멤버 선택</label>
-      <select id="updateMemberSelect"></select>
+// --- Utilities ---
+function qs(sel,root=document){return root.querySelector(sel);}
+function qsa(sel,root=document){return [...root.querySelectorAll(sel)];}
+function getParam(name){
+  return new URLSearchParams(location.search).get(name);
+}
 
-      <label for="updateDateInput">날짜 선택</label>
-      <input type="date" id="updateDateInput" />
+// --- 닉네임 저장 ---
+function getNickname(){ return localStorage.getItem("fanNickname") || ""; }
+function setNickname(nick){ localStorage.setItem("fanNickname", nick); }
 
-      <label for="updateContentInput">문의 내용</label>
-      <textarea id="updateContentInput" placeholder="문의 내용을 입력하세요."></textarea>
+// --- 이미지 & JSON 파일 경로 ---
+function profileSrc(id){ return `images/${id}_profile.jpg`; }
+function backgroundSrc(id){ return `images/${id}_background.jpg`; }
+function dataSrc(id){ return `data/${id}.json`; }
 
-      <div class="modal-actions">
-        <button class="secondary-btn" onclick="closeModal('updateModal')">취소</button>
-        <button class="primary-btn" id="sendUpdateBtn">보내기</button>
-      </div>
-    </div>
-  </div>
+// --- 날짜 표시 포맷 (기존 방식 유지) ---
+function formatDateK(dateStr){
+  const d=new Date(dateStr);
+  if(!isNaN(d)){
+    const weekday=["일","월","화","수","목","금","토"];
+    return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 ${weekday[d.getDay()]}요일`;
+  }
+  return dateStr;
+}
 
-  <!-- 관리자 비밀번호 입력 모달 -->
-  <div id="managerPwModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close-btn" onclick="closeModal('managerPwModal')">×</button>
-      <h3>관리자 비밀번호 입력</h3>
-      <input type="password" id="managerPwInput" placeholder="비밀번호를 입력하세요" />
+// --- 문의사항 저장 (localStorage 사용) ---
+let inquiryList = JSON.parse(localStorage.getItem("inquiryList") || "[]");
 
-      <div class="modal-actions">
-        <button class="secondary-btn" onclick="closeModal('managerPwModal')">취소</button>
-        <button class="primary-btn" id="managerPwSubmitBtn">확인</button>
-      </div>
-    </div>
-  </div>
+// --- 채팅 데이터 캐시 ---
+let chatDataCache = {};
 
-  <!-- 관리자 메뉴 모달 -->
-  <div id="managerMenuModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close-btn" onclick="closeModal('managerMenuModal')">×</button>
-      <h3>관리자 메뉴</h3>
-      <div style="display:flex; justify-content:center; gap:16px;">
-        <button id="newsBtn" class="primary-btn">News</button>
-        <button id="uploadBtn" class="primary-btn">Upload</button>
-      </div>
-    </div>
-  </div>
+// ---------------- Archive (index.html) 기능 복원+추가 ----------------
+function initArchive(){
+  const listEl = qs("#archiveList");
+  if(!listEl) return;
 
-  <!-- News 목록 모달 -->
-  <div id="newsModal" class="modal hidden">
-    <div class="modal-card" style="max-height:70vh; overflow-y:auto;">
-      <button class="modal-close-btn" onclick="closeModal('newsModal')">×</button>
-      <h3>문의사항 목록</h3>
-      <div id="newsList"></div>
-    </div>
-  </div>
+  MEMBER_LIST.forEach(m=>{
+    const row = document.createElement("a");
+    row.className="archive-row";
+    row.href=`member.html?m=${m.id}`;
+    row.innerHTML=`
+      <span class="archive-row-avatar-wrap">
+        <img class="archive-row-avatar" src="${profileSrc(m.id)}" alt="${m.display}"
+             onerror="this.src='images/default_profile.jpg'">
+      </span>
+      <span class="archive-row-name">${m.display}</span>
+      <span class="archive-row-status"> </span>
+    `;
+    listEl.appendChild(row);
+  });
 
-  <!-- Upload 모달 -->
-  <div id="uploadModal" class="modal hidden">
-    <div class="modal-card" style="max-height:80vh; overflow-y:auto;">
-      <button class="modal-close-btn" onclick="closeModal('uploadModal')">×</button>
-      <h3>채팅 데이터 추가</h3>
+  // More 메뉴 초기화
+  const moreBtn = qs("#moreBtn"), membersBtn = qs("#membersBtn");
+  const moreSubmenu = qs("#moreSubmenu");
+  if(moreBtn && membersBtn && moreSubmenu){
+    moreBtn.addEventListener("click", ()=>toggleMore(membersBtn, moreBtn, moreSubmenu));
+    membersBtn.addEventListener("click", ()=>selectMembersTab(membersBtn, moreBtn, moreSubmenu));
+  }
 
-      <label for="uploadMemberSelect">멤버 선택</label>
-      <select id="uploadMemberSelect"></select>
+  // 버튼 이벤트 연결
+  qs("#updateBtn")?.addEventListener("click", ()=>openModal("updateModal"));
+  qs("#managerBtn")?.addEventListener("click", ()=>openModal("managerPwModal"));
 
-      <label for="uploadDateInput">날짜 선택</label>
-      <input type="date" id="uploadDateInput" />
+  // 폼 옵션 채우기
+  fillMemberSelects();
+  fillTimeSelect();
 
-      <label for="uploadTimeSelect">시간 선택</label>
-      <select id="uploadTimeSelect">
-        <!-- 오전/오후 시간 옵션은 JS에서 채움 -->
-      </select>
+  // 이벤트 핸들러 연결
+  attachUpdateSendHandler();
+  attachManagerPwHandler();
+  attachManagerMenuButtons();
+  attachUploadHandlers();
+}
 
-      <label for="uploadTextInput">메시지 입력</label>
-      <textarea id="uploadTextInput" placeholder="메시지를 입력하세요."></textarea>
+// More 메뉴 토글 함수
+function toggleMore(membersBtn, moreBtn, moreSubmenu){
+  const vis = moreSubmenu.style.display==="flex";
+  moreSubmenu.style.display = vis ? "none" : "flex";
+  moreBtn.classList.toggle("tab-btn--active", !vis);
+  membersBtn.classList.toggle("tab-btn--active", vis);
+}
 
-      <label for="uploadFileInput">이미지 업로드 (선택)</label>
-      <input type="file" id="uploadFileInput" accept="image/*" />
+function selectMembersTab(membersBtn, moreBtn, moreSubmenu){
+  moreSubmenu.style.display = "none";
+  membersBtn.classList.add("tab-btn--active");
+  moreBtn.classList.remove("tab-btn--active");
+}
 
-      <div class="modal-actions">
-        <button class="secondary-btn" onclick="closeModal('uploadModal')">취소</button>
-        <button class="primary-btn" id="uploadSaveBtn">저장</button>
-      </div>
-    </div>
-  </div>
+// 멤버 선택 드롭다운 초기화
+function fillMemberSelects(){
+  ["updateMemberSelect","uploadMemberSelect"].forEach(id=>{
+    const sel = qs(`#${id}`);
+    if(!sel) return;
+    sel.innerHTML = MEMBER_LIST.map(m=>`<option value="${m.id}">${m.display}</option>`).join("");
+  });
+}
 
-  <!-- 알림 팝업 -->
-  <div id="alertModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close-btn" onclick="closeModal('alertModal')">×</button>
-      <h3 id="alertTitle"></h3>
-      <p id="alertMessage"></p>
-      <div class="modal-actions">
-        <button class="primary-btn" onclick="closeModal('alertModal')">확인</button>
-      </div>
-    </div>
-  </div>
+// 시간 선택 초기화
+function fillTimeSelect(){
+  const sel = qs("#uploadTimeSelect");
+  if(!sel) return;
+  const periods = ["오전","오후"];
+  sel.innerHTML = periods.map(p =>
+    [12,1,2,3,4,5,6,7,8,9,10,11].flatMap(h =>
+      ["00","30"].map(mm => `<option>${p} ${h}:${mm}</option>`)
+    ).join("")
+  ).join("");
+}
 
-</div>
-</body>
-</html>
+// ---------------- Member 화면 초기화 (기존 코드) ----------------
+function initMember(){
+  const id = getParam("m"); if(!id) return;
+  qs("#memberBg").src = backgroundSrc(id);
+  const prof = qs("#memberProfile");
+  prof.src = profileSrc(id);
+  prof.onerror = ()=>prof.src="images/default_profile.jpg";
+  qs("#memberDisplayName").textContent = MEMBER_LIST.find(m=>m.id===id)?.display || id;
+  qs("#viewChatBtn").addEventListener("click", ()=>location.href=`chat.html?m=${id}`);
+}
+
+// ---------------- Chat 화면 초기화 ----------------
+let currentMemberId = null;
+function initChat(){
+  const id = getParam("m"); if(!id) return;
+  currentMemberId = id;
+  qs("#chatMemberName").textContent = MEMBER_LIST.find(m=>m.id===id)?.display || id;
+
+  if(!getNickname()) openNickModal();
+  loadChatData(id);
+}
+
+// 데이터 불러오기 (기존 AJAX 방식 + 캐시 통합)
+async function loadChatData(id){
+  const box = qs("#chatScroll");
+  if(!box) return;
+  box.innerHTML="<div class='chat-date-sep'>불러오는 중...</div>";
+  try{
+    let data = chatDataCache[id] || await fetch(dataSrc(id)).then(r=>r.json());
+    chatDataCache[id] = data; // 캐시에 저장
+    renderChat(box, data, id);
+  }catch(e){
+    box.innerHTML="<div class='chat-date-sep'>채팅 데이터를 불러올 수 없어요.</div>";
+  }
+}
+
+// 채팅 렌더링 (기존 방식 그대로 복원)
+function renderChat(box,data,memberId){
+  box.innerHTML = "";
+  let lastDate = null;
+  const fanNick = getNickname()||"나";
+  data.forEach(msg=>{
+    if(msg.date!==lastDate){
+      const sep = document.createElement("div");
+      sep.className="chat-date-sep";
+      sep.textContent = formatDateK(msg.date);
+      box.appendChild(sep);
+      lastDate = msg.date;
+    }
+    const who = msg.from==="artist" ? "artist" : "fan";
+    if(msg.image){
+      const img = document.createElement("img");
+      img.src = msg.image; img.className="chat-img"; img.alt="사진";
+      img.onclick = ()=>showImagePopup(img.src);
+      box.appendChild(img);
+    } else {
+      const div = document.createElement("div");
+      div.className = `chat-msg ${who}`;
+      div.textContent = msg.text.replace("(name)", fanNick);
+      box.appendChild(div);
+    }
+    if(msg.time){
+      const meta = document.createElement("div");
+      meta.className="chat-meta";
+      meta.textContent = (who==="fan"?fanNick:getMemberDisplay(memberId)) + " · " + msg.time;
+      box.appendChild(meta);
+    }
+  });
+}
+
+// 닉네임 모달, 저장 기능 (기존 복원)
+function openNickModal(){ qs("#nickModal")?.classList.remove("hidden"); }
+function closeNickModal(){ qs("#nickModal")?.classList.add("hidden"); }
+function saveNickname(){
+  const inp = qs("#nickInput");
+  const nick = inp.value.trim();
+  if(nick){ setNickname(nick); closeNickModal(); loadChatData(currentMemberId); }
+}
+
+// 이미지 팝업 (기존)
+function showImagePopup(src){
+  const popup = document.createElement("div");
+  popup.className="img-popup";
+  popup.innerHTML = `
+    <div class="img-popup-bg" onclick="this.parentNode.remove()"></div>
+    <div class="img-popup-content">
+      <img src="${src}" alt="채팅 이미지">
+      <a class="img-save-btn" href="${src}" download>이미지 저장</a>
+    </div>`;
+  document.body.appendChild(popup);
+}
+
+// ---------------- Update 문의 기능 ----------------
+function attachUpdateSendHandler(){
+  qs("#sendUpdateBtn")?.addEventListener("click", ()=> {
+    const m = qs("#updateMemberSelect").value;
+    const d = qs("#updateDateInput").value;
+    const c = qs("#updateContentInput").value.trim();
+    if(!m||!d||!c){
+      return showAlert("입력 오류","항목을 모두 입력해주세요.");
+    }
+    inquiryList.push({member:m,date:d,content:c,timestamp:Date.now()});
+    localStorage.setItem("inquiryList", JSON.stringify(inquiryList));
+    closeModal("updateModal");
+    showAlert("성공","문의사항이 전송되었습니다.");
+  });
+}
+
+// ---------------- 관리자 기능 ----------------
+function attachManagerPwHandler(){
+  qs("#managerPwSubmitBtn")?.addEventListener("click", ()=>{
+    const pw = qs("#managerPwInput").value;
+    if(pw==="0912"){
+      closeModal("managerPwModal");
+      openModal("managerMenuModal");
+    } else {
+      closeModal("managerPwModal");
+      showAlert("접근 불가","관리자 전용 메뉴입니다.");
+    }
+  });
+}
+
+function attachManagerMenuButtons(){
+  qs("#newsBtn")?.addEventListener("click", ()=>{
+    closeModal("managerMenuModal");
+    renderNewsList();
+    openModal("newsModal");
+  });
+  qs("#uploadBtn")?.addEventListener("click", ()=>{
+    closeModal("managerMenuModal");
+    resetUploadForm();
+    openModal("uploadModal");
+  });
+}
+
+// News 목록 렌더링
+function renderNewsList(){
+  const el = qs("#newsList");
+  el.innerHTML = inquiryList.length
+    ? inquiryList.map(i=>`<div style="margin-bottom:12px;">
+        <strong>${i.member} (${i.date})</strong><br>${i.content}
+      </div>`).join("")
+    : "<p>문의사항이 없습니다.</p>";
+}
+
+// ---------------- Upload 기능 ----------------
+function resetUploadForm(){
+  qs("#uploadMemberSelect").value = MEMBER_LIST[0].id;
+  qs("#uploadDateInput").value = "";
+  qs("#uploadTimeSelect").selectedIndex = 0;
+  qs("#uploadTextInput").value = "";
+  qs("#uploadFileInput").value = "";
+}
+
+function attachUploadHandlers(){
+  qs("#uploadSaveBtn")?.addEventListener("click", async ()=>{
+    const m = qs("#uploadMemberSelect").value;
+    const d = qs("#uploadDateInput").value;
+    const t = qs("#uploadTimeSelect").value;
+    const txt = qs("#uploadTextInput").value.trim();
+    const file = qs("#uploadFileInput").files[0];
+
+    if(!m||!d||(!txt && !file)){
+      return showAlert("입력 오류","메시지 또는 이미지를 입력하세요.");
+    }
+
+    let imageUrl = "";
+    if(file){
+      imageUrl = URL.createObjectURL(file);
+    }
+
+    const newMsg = {from:"artist",date:d,time:t,image:imageUrl,text:txt};
+    chatDataCache[m] = chatDataCache[m]||[];
+    chatDataCache[m].push(newMsg);
+
+    // 관리자 업로드 후 바로 해당 멤버 채팅 열려있다면 반영
+    if(currentMemberId===m){
+      loadChatData(m);
+    }
+
+    closeModal("uploadModal");
+    showAlert("업로드 성공","채팅에 새 데이터가 반영되었습니다.");
+  });
+}
+
+// ---------------- 공통 모달 / 알림 ----------------
+function openModal(id){ qs(`#${id}`)?.classList.remove("hidden"); }
+function closeModal(id){ qs(`#${id}`)?.classList.add("hidden"); }
+function showAlert(title,msg){
+  qs("#alertTitle").textContent = title;
+  qs("#alertMessage").textContent = msg;
+  openModal("alertModal");
+}
+
+// ---------------- 초기 진입점 ----------------
+document.addEventListener("DOMContentLoaded",()=>{
+  const p = location.pathname.split("/").pop();
+  if(p==="" || p==="index.html") initArchive();
+  else if(p==="member.html") initMember();
+  else if(p==="chat.html") initChat();
+});
